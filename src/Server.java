@@ -10,17 +10,17 @@ import service.repository.UserRepositoryMock;
 public class Server {
     //to not up properties
     public static void main(String[] args) throws Exception {
-        String url;
-        String userDb;
-        String password;
+        // String url;
+        // String userDb;
+        // String password;
         Properties props = new Properties();
 
         try (FileInputStream input = new FileInputStream("src/properties/config.properties")) {
             props.load(input);
 
-            url = props.getProperty("db.url");
-            userDb = props.getProperty("db.user");
-            password = props.getProperty("db.password");
+            // url = props.getProperty("db.url");
+            // userDb = props.getProperty("db.user");
+            // password = props.getProperty("db.password");
         } catch (IOException e) {
             throw new Exception(e);
         };

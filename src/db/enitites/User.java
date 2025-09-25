@@ -10,8 +10,9 @@ public class User {
     private Date created_at;
     private Date updated_at;
     private Date deleted_at;
+    private String role;
 
-    public User(int id, String name, String email, String password, Date created_at, Date updated_at, Date deleted_at) {
+    public User(int id, String name, String email, String password, Date created_at, Date updated_at, Date deleted_at, String role) {
         this.id = id;
         this.name = name;
         this.email = email;
@@ -19,6 +20,7 @@ public class User {
         this.created_at = created_at;
         this.updated_at = updated_at;
         this.deleted_at = deleted_at;
+        this.role = role;
     }
 
     public int getId() {
@@ -72,5 +74,11 @@ public class User {
         this.deleted_at = deleted_at;
     }
 
-    
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
 }

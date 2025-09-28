@@ -4,7 +4,7 @@ import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-// import java.util.concurrent.atomic.AtomicInteger;
+
 
 import models.APIConection.Handler;
 import models.APIConection.Request;
@@ -56,10 +56,21 @@ public class ServerCRUD {
             String body = "";
             String linha;
             int contentLength = 0;
+            Map<String, String> headers = new HashMap<>();
 
             while ((linha = in.readLine()) != null && !linha.isEmpty()) {
-                if (linha.toLowerCase().startsWith("content-length:")) {
-                    contentLength = Integer.parseInt(linha.split(":")[1].trim());
+                int idx = linha.indexOf(":");
+                if (idx > 0) {
+                    String key = linha.substring(0, idx).trim();
+                    String value = linha.substring(idx + 1).trim();
+                    headers.put(key, value);
+                    if (key.equalsIgnoreCase("content-length")) {
+                        try {
+                            contentLength = Integer.parseInt(value);
+                        } catch (NumberFormatException e) {
+                            contentLength = 0;
+                        }
+                    }
                 }
             }
 
@@ -70,24 +81,22 @@ public class ServerCRUD {
             }
 
             if (metodo.equals("GET")) {
-                for (String rota : rotasGet.keySet()) {
-                    if (caminho.equals(rota) || caminho.matches(rota + "/\\d+")) {
+                List<String> rotasOrdenadas = new ArrayList<>(rotasGet.keySet());
+                rotasOrdenadas.sort((a, b) -> Integer.compare(b.length(), a.length()));
+                for (String rota : rotasOrdenadas) {
+                    if (caminho.equals(rota) || caminho.startsWith(rota + "/")) {
                         try (BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
                             Request req = new Request();
                             req.path = caminho;
                             req.method = metodo;
+                            req.headers = headers;
                             Response res = new Response(out);
                             Handler handler = rotasGet.get(rota);
-                            if (handler == null) {
-                                throw new Exception();
-                            }
                             handler.handle(req, res);
                         }
                         return;
                     }
                 }
-
-                // Rota não encontrada
                 try (BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
                     String resposta = "{\"erro\": \"Rota não encontrada\"}";
                     out.write("HTTP/1.1 404 Not Found\r\n");
@@ -96,31 +105,26 @@ public class ServerCRUD {
                     out.write("\r\n");
                     out.write(resposta);
                     out.flush();
-                } 
+                }
+                return;
             }
 
             if (metodo.equals("POST")) {
-                for (String rota : rotasGet.keySet()) {
+                for (String rota : rotasPost.keySet()) {
                     if (caminho.equals(rota) || caminho.matches(rota + "/\\d+")) {
                         try (BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
                             Request req = new Request();
                             req.path = caminho;
                             req.method = metodo;
                             req.body = body;
-                            System.out.print(body);
-                            if(body==null) throw new Exception("Body está vazio");
+                            req.headers = headers;
                             Response res = new Response(out);
                             Handler handler = rotasPost.get(rota);
-                            if (handler == null) {
-                                throw new Exception();
-                            }
                             handler.handle(req, res);
                         }
                         return;
                     }
                 }
-
-                // Rota não encontrada
                 try (BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
                     String resposta = "{\"erro\": \"Rota não encontrada\"}";
                     out.write("HTTP/1.1 404 Not Found\r\n");
@@ -129,9 +133,10 @@ public class ServerCRUD {
                     out.write("\r\n");
                     out.write(resposta);
                     out.flush();
-                } 
-
+                }
+                return;
             }
+
             if (metodo.equals("PUT")) {
                 for (String rota : rotasPut.keySet()) {
                     if (caminho.equals(rota) || caminho.matches(rota + "/\\d+")) {
@@ -140,13 +145,9 @@ public class ServerCRUD {
                             req.path = caminho;
                             req.method = metodo;
                             req.body = body;
-                            System.out.print(body);
-                            if(body==null) throw new Exception("Body está vazio");
+                            req.headers = headers;
                             Response res = new Response(out);
                             Handler handler = rotasPut.get(rota);
-                            if (handler == null) {
-                                throw new Exception();
-                            }
                             handler.handle(req, res);
                         }
                         return;
@@ -160,9 +161,10 @@ public class ServerCRUD {
                     out.write("\r\n");
                     out.write(resposta);
                     out.flush();
-                } 
-
+                }
+                return;
             }
+
             if (metodo.equals("DELETE")) {
                 for (String rota : rotasDelete.keySet()) {
                     if (caminho.equals(rota) || caminho.matches(rota + "/\\d+")) {
@@ -170,18 +172,14 @@ public class ServerCRUD {
                             Request req = new Request();
                             req.path = caminho;
                             req.method = metodo;
+                            req.headers = headers;
                             Response res = new Response(out);
                             Handler handler = rotasDelete.get(rota);
-                            if (handler == null) {
-                                throw new Exception();
-                            }
                             handler.handle(req, res);
                         }
                         return;
                     }
                 }
-
-                // Rota não encontrada
                 try (BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
                     String resposta = "{\"erro\": \"Rota não encontrada\"}";
                     out.write("HTTP/1.1 404 Not Found\r\n");
@@ -190,10 +188,9 @@ public class ServerCRUD {
                     out.write("\r\n");
                     out.write(resposta);
                     out.flush();
-                } 
-
+                }
             }
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

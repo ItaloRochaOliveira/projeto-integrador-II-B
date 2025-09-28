@@ -35,7 +35,7 @@ public class Response {
         case 500 -> HttpStatus.INTERNAL_SERVER_ERROR;
         case 501 -> HttpStatus.NOT_IMPLEMENTED;
         case 503 -> HttpStatus.SERVICE_UNAVAILABLE;
-        default -> null;             // ou lance exceção, se preferir
+        default -> null;             
     };
 }
 }

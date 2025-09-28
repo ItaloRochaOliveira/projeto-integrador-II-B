@@ -1,74 +1,75 @@
 package controller;
 
-import java.util.List;
-
 import models.APIConection.Handler;
 import models.APIConection.Request;
 import models.APIConection.Response;
-import service.UserService;
-import db.enitites.User;
+import service.AuthService;
 import common.JWTUtil;
 
-public class UserController {
-    UserService userService;
+public class AuthController {
+    private final AuthService authService;
 
-    public UserController(UserService userService){
-        this.userService = userService;
+    public AuthController(AuthService authService) {
+        this.authService = authService;
     }
 
-    public Handler get() {
+    
+    public Handler login() {
         return (Request req, Response res) -> {
             try {
-                String[] parts = req.path.split("/");
-                if (parts.length == 3) { 
-                    if (parts[2].isEmpty()) throw new Exception("id do usuário não informado");
-                    int id = Integer.parseInt(parts[2]);
-                    res.send(200, toJSON(java.util.Collections.singletonList(userService.get(id))));
-                } else {
-                    res.send(200, toJSON(userService.getAll()));
+                String body = req.body;
+                String email = extractJsonString(body, "email");
+                String password = extractJsonString(body, "senha");
+                String token = authService.login(email, password);
+                res.send(200, "{\"token\":\"" + token + "\"}");
+            } catch (Exception e) {
+                e.printStackTrace();
+                try {
+                    res.send(401, "{\"erro\": \"" + e.getMessage() + "\"}");
+                } catch (java.io.IOException ioException) {
+                    ioException.printStackTrace();
                 }
+            }
+        };
+    }
+
+    
+    public Handler signup() {
+        return (Request req, Response res) -> {
+            try {
+                String body = req.body;
+                String name = extractJsonString(body, "nome");
+                String email = extractJsonString(body, "email");
+                String password = extractJsonString(body, "senha");
+                String role = extractJsonString(body, "role");
+                String token = authService.signup(name, email, password, role);
+                res.send(201, "{\"token\":\"" + token + "\"}");
             } catch (Exception e) {
                 e.printStackTrace();
                 try {
                     res.send(400, "{\"erro\": \"" + e.getMessage() + "\"}");
                 } catch (java.io.IOException ioException) {
                     ioException.printStackTrace();
-                    
                 }
             }
         };
     }
 
-    public Handler post() {
-        return (Request req, Response res) -> {
-            try {
-                String body = req.body;
-                String name = extractJsonString(body, "name");
-                String email = extractJsonString(body, "email");
-                userService.post(name, email);
-                res.send(201, "{\"message\": \"Usuário criado com sucesso\"}");
-            } catch (Exception e) {
-                e.printStackTrace();
-                try {
-                    res.send(400, "{\"erro\": \"" + e.getMessage() + "\" }");
-                } catch (java.io.IOException ioException) {
-                    ioException.printStackTrace();
-                }
-            }
-        };
-    }
-
+    
     public Handler put() {
         return (Request req, Response res) -> {
             try {
                 if (!isAuthorized(req, res)) return;
-                String[] parts = req.path.split("/");
-                if (parts.length < 3) throw new Exception("Caminho inválido");
-                int userId = Integer.parseInt(parts[2]);
+                String auth = req.headers.get("Authorization");
+                if (auth == null) auth = req.headers.get("authorization");
+                String token = auth.substring(7).trim();
+                JWTUtil.UserInfo info = JWTUtil.extractUserInfo(token);
+                if (info == null) throw new Exception("Token inválido");
+                int userId = info.userId;
                 String body = req.body;
-                String name = extractJsonString(body, "name");
+                String name = extractJsonString(body, "nome");
                 String email = extractJsonString(body, "email");
-                userService.put(userId, name, email);
+                authService.updateUser(userId, name, email);
                 res.send(200, "{\"message\": \"Usuário atualizado com sucesso\"}");
             } catch (Exception e) {
                 e.printStackTrace();
@@ -81,14 +82,18 @@ public class UserController {
         };
     }
 
+    
     public Handler delete() {
         return (Request req, Response res) -> {
             try {
                 if (!isAuthorized(req, res)) return;
-                String[] parts = req.path.split("/");
-                if (parts.length < 3) throw new Exception("Caminho inválido");
-                int userId = Integer.parseInt(parts[2]);
-                userService.delete(userId);
+                String auth = req.headers.get("Authorization");
+                if (auth == null) auth = req.headers.get("authorization");
+                String token = auth.substring(7).trim();
+                JWTUtil.UserInfo info = JWTUtil.extractUserInfo(token);
+                if (info == null) throw new Exception("Token inválido");
+                int userId = info.userId;
+                authService.deleteUser(userId);
                 res.send(200, "{\"message\": \"Usuário removido com sucesso\"}");
             } catch (Exception e) {
                 e.printStackTrace();
@@ -99,6 +104,13 @@ public class UserController {
                 }
             }
         };
+    }
+
+    private String extractJsonString(String json, String key) {
+        if (json == null) return null;
+        String[] parts = json.split("\"" + key + "\"\\s*:\\s*\"");
+        if (parts.length < 2) return null;
+        return parts[1].split("\"")[0];
     }
 
     private boolean isAuthorized(Request req, Response res) {
@@ -126,29 +138,5 @@ public class UserController {
             }
             return false;
         }
-    }
-
-    public static String toJSON(List<?> lista){
-        StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < lista.size(); i++) {
-            Object item = lista.get(i);
-            if (item == null) {
-                sb.append("null");
-            } else if (item instanceof User) {
-                User user = (User) item;
-                sb.append(String.format("{\"id\":%d,\"name\":\"%s\",\"email\":\"%s\"}", user.getId(), user.getName(), user.getEmail()));
-            } else {
-                sb.append('\"').append(item.toString().replace("\"", "\"")).append('\"');
-            }
-            if (i < lista.size() - 1) sb.append(",");
-        }
-        sb.append("]");
-        return sb.toString();
-    }
-
-    private String extractJsonString(String json, String key) {
-        String[] parts = json.split("\"" + key + "\"\\s*:\\s*\"");
-        if (parts.length < 2) return null;
-        return parts[1].split("\"")[0];
     }
 }

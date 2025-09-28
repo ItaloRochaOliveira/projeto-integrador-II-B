@@ -3,7 +3,6 @@ package service;
 import models.Exceptions.BadRequestException;
 import models.Exceptions.NotFoundException;
 import service.repository.UserRepositoryMock;
-import db.enitites.User;
 import db.mock.UserDataMock;
 
 import java.util.List;
